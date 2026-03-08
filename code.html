@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Snake — ma</title>
+    <style>
+        :root {
+            --bg: #07122a;
+            --panel: #081427;
+            --accent: #10b981;
+            --muted: rgba(230, 238, 248, 0.7)
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(180deg, #041026, #07122a);
+            font-family: system-ui, Segoe UI, Roboto, Arial;
+            color: #e6eef8
+        }
+
+        .wrap {
+            width: min(980px, 96%);
+            display: grid;
+            grid-template-columns: 1fr 260px;
+            gap: 18px;
+            padding: 22px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+            box-shadow: 0 12px 30px rgba(2, 6, 23, 0.6)
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 18px
+        }
+
+        .stage {
+            padding: 12px;
+            border-radius: 10px;
+            background: var(--panel)
+        }
+
+        .canvas-wrap {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        canvas#ma {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(0, 0, 0, 0.03))
+        }
+
+        .sidebar {
+            padding: 6px
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px
+        }
+
+        .btn {
+            background: linear-gradient(90deg, #06b6d4, var(--accent));
+            color: #fff;
+            padding: 8px 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600
+        }
+
+        @media (max-width:860px) {
+            .wrap {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="wrap">
+        <section class="stage">
+            <h1>Snake — move with Arrow keys or WASD</h1>
+            <div class="canvas-wrap" aria-hidden="false">
+                <canvas id="ma" aria-label="snake game canvas"></canvas>
+            </div>
+        </section>
+
+        <aside class="sidebar">
+            <div class="card">
+                <div class="muted">Score</div>
+                <div id="score" style="font-size:22px;font-weight:700;margin-top:6px">0</div>
+            </div>
+            <div class="card">
+                <div class="muted">Controls</div>
+                <div style="margin-top:8px" class="controls">
+                    <a class="btn" href="#" id="startBtn">Start</a>
+                    <a class="btn" href="#" id="restartBtn">Restart</a>
+                </div>
+            </div>
+            <div class="card muted">Classic Snake: eat apples to grow. Don't hit walls or yourself. Canvas is crisp on
+                high‑DPI screens.</div>
+        </aside>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('ma');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+
+        // Game state
+        let cols = 20, rows = 12; // will be recalculated
+        let cell = 24; // desired CSS px cell size
+        let snake, dir, apple, score, running, speed;
+
+        function resetGame() {
+            score = 0; scoreEl.textContent = score;
+            // reset speed and snake
+            speed = 8; // moves per second
+            resetSnake();
+            placeApple();
+            running = false;
+            draw();
+        }
+
+        function resetSnake() {
+            const startX = Math.floor(cols / 2), startY = Math.floor(rows / 2);
+            snake = [{ x: startX, y: startY }, { x: startX - 1, y: startY }, { x: startX - 2, y: startY }];
+            dir = { x: 1, y: 0 };
+        }
+
+        function placeApple() {
+            const occupied = new Set(snake.map(s => s.x + ',' + s.y));
+            let ax, ay; do { ax = Math.floor(Math.random() * cols); ay = Math.floor(Math.random() * rows); } while (occupied.has(ax + ',' + ay));
+            apple = { x: ax, y: ay };
+        }
+
+        function resizeCanvas() {
+            const ratio = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.round(rect.width * ratio);
+            canvas.height = Math.round(rect.height * ratio);
+            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+            // recompute grid to fit nicely
+            cols = Math.max(8, Math.floor(rect.width / cell));
+            rows = Math.max(6, Math.floor(rect.height / cell));
+            resetGame();
+        }
+
+        function gameTick() {
+            if (!running) return;
+            // compute next head with wrap-around
+            let nx = snake[0].x + dir.x;
+            let ny = snake[0].y + dir.y;
+            nx = (nx + cols) % cols;
+            ny = (ny + rows) % rows;
+            const head = { x: nx, y: ny };
+            // self-collision only (walls wrap now)
+            if (snake.some(s => s.x === head.x && s.y === head.y)) {
+                running = false; // game over
+                draw();
+                // reset snake size/position shortly after death, keep score
+                setTimeout(() => { resetSnake(); draw(); }, 700);
+                return;
+            }
+            snake.unshift(head);
+            if (head.x === apple.x && head.y === apple.y) { score++; scoreEl.textContent = score; placeApple(); if (score % 4 === 0) speed = Math.min(20, speed + 1); }
+            else snake.pop();
+        }
+
+        let lastTime = 0, acc = 0;
+        function loop(t) {
+            const dt = (t - lastTime) / 1000; lastTime = t; acc += dt;
+            const interval = 1 / speed;
+            while (acc >= interval) { gameTick(); acc -= interval; }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function draw() {
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            ctx.clearRect(0, 0, w, h);
+            // background
+            ctx.fillStyle = '#041026'; ctx.fillRect(0, 0, w, h);
+            // grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+            const cw = w / cols, ch = h / rows;
+            for (let x = 0; x <= cols; x++) { ctx.beginPath(); ctx.moveTo(x * cw + 0.5, 0); ctx.lineTo(x * cw + 0.5, h); ctx.stroke(); }
+            for (let y = 0; y <= rows; y++) { ctx.beginPath(); ctx.moveTo(0, y * ch + 0.5); ctx.lineTo(w, y * ch + 0.5); ctx.stroke(); }
+
+            // apple
+            ctx.fillStyle = '#ef4444';
+            drawCircle((apple.x + 0.5) * cw, (apple.y + 0.5) * ch, Math.min(cw, ch) * 0.32);
+
+            // snake
+            for (let i = snake.length - 1; i >= 0; i--) {
+                const s = snake[i];
+                const x = s.x * cw, y = s.y * ch;
+                ctx.fillStyle = i === 0 ? '#10b981' : '#059669';
+                roundRect(ctx, x + 2, y + 2, cw - 4, ch - 4, Math.min(cw, ch) * 0.12);
+            }
+
+            // overlay when stopped
+            if (!running) {
+                ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = '#fff'; ctx.font = '18px system-ui'; ctx.textAlign = 'center'; ctx.fillText('Press Start or use Arrow/WASD to play', w / 2, h / 2);
+            }
+        }
+
+        function drawCircle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+        function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.fill(); }
+
+        // controls
+        window.addEventListener('keydown', e => {
+            const k = e.key;
+            const mapping = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
+            const m = mapping[k] || mapping[k.toLowerCase()];
+            if (m) {
+                // prevent reverse
+                if (snake.length > 1 && snake[0].x + m[0] === snake[1].x && snake[0].y + m[1] === snake[1].y) return;
+                dir = { x: m[0], y: m[1] };
+                running = true;
+                e.preventDefault();
+            }
+            if (k === ' ') { // space to pause
+                running = !running; e.preventDefault();
+            }
+        });
+
+        startBtn.addEventListener('click', e => { e.preventDefault(); running = true; });
+        restartBtn.addEventListener('click', e => { e.preventDefault(); resetGame(); running = true; });
+
+        window.addEventListener('resize', () => { resizeCanvas(); });
+
+        // init
+        resizeCanvas(); lastTime = performance.now(); requestAnimationFrame(loop);
+
+    </script>
+</body>
+
+</html>
