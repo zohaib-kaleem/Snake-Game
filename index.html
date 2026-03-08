@@ -5,76 +5,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Snake Game</title>
-
-    <style>
-        * {
-            padding: 0;
-            margin: 0;
-        }
-
-        #instruction {
-            color: antiquewhite;
-            font-size: x-large;
-            padding: 10px;
-        }
-
-        @media(orientation: landscape) {
-            main {
-                width: 70vw;
-                height: 100vh;
-
-                background: rgb(11, 11, 57);
-
-                display: flex;
-                flex-direction: column;
-
-                align-items: center;
-                justify-content: space-around;
-            }
-
-            canvas {
-                margin: 20px;
-                width: min(70vw, 1000px);
-                height: 70%;
-
-                border: 5px solid aliceblue;
-                border-radius: 20px;
-            }
-
-            aside {
-                position: relative;
-                float: right;
-            }
-        }
-
-
-        @media only screen and (orientation: portrait) {
-            aside {}
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <main>
-        <section id="">
 
-        </section>
-        <div id="instruction">Snake - move with Arrow keys or WASD</div>
-        <canvas id="snake-apple-game"></canvas>
-    </main>
+<main>
 
-    <aside>
-        <div id="score-bar">
-            Score
-            <div id="score"></div>
-        </div>
-        <div id="controls">
-            <button id="pause">Start</button>
-            <button id="restart">Restart</button>
-        </div>
-        <div id="hint">Classic Snake: eat apples to grow. Don't hit the walls or yourself. Canvas is crisp on high-DPI
-            screens.</div>
-    </aside>
+<section id="game">
+<div id="instruction">Snake - move with Arrow keys or WASD</div>
+<canvas id="snake-apple-game" width="600" height="600"></canvas>
+</section>
+
+<aside>
+
+<div id="score-bar">
+<span>Score</span>
+<div id="score">0</div>
+</div>
+
+<div id="controls">
+<button id="pause">Start</button>
+<button id="restart">Restart</button>
+</div>
+
+<div id="hint">
+Classic Snake: eat apples to grow. Don't hit the walls or yourself.
+</div>
+
+</aside>
+
+</main>
+
+<script src="script.js"></script>
+
 </body>
-
 </html>
